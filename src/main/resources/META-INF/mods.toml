@@ -1,0 +1,31 @@
+modLoader="javafml"
+loaderVersion="[31,)"
+
+issueTrackerURL="https://github.com/RMajewski/mod_statistics/issues"
+
+[[mods]]
+modId="statistics"
+version="${version}"
+displayName="Thuringa's Statistics Mod"
+updateJSONURL="https://raw.githubusercontent.com/RMajewski/mod_statistics/master/version.json"
+displayURL="https://github.com/RMajewski/mod_statistics/tree/1.15.2"
+#logoFile="examplemod.png"
+credits="Thanks for this example mod goes to Java"
+authors="Thuringa"
+description='''
+Create more detailted statistics in Minecraft.
+'''
+
+[[dependencies.statistics]]
+    modId="forge"
+    mandatory=true
+    versionRange="[31,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.statistics]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.15.2]"
+    ordering="NONE"
+    side="BOTH"
