@@ -26,6 +26,6 @@ Create more detailted statistics in Minecraft.
 [[dependencies.statistics]]
     modId="minecraft"
     mandatory=true
-    versionRange="[1.15.2]"
+    versionRange="[${mcversion}]"
     ordering="NONE"
     side="BOTH"

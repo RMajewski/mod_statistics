@@ -6,12 +6,16 @@ buildscript {
     }
     dependencies {
         classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '3.+', changing: true
+        classpath 'com.github.jengelman.gradle.plugins:shadow:4.0.3'
+        classpath 'mysql:mysql-connector-java:8.0.19'
+        classpath 'org.xerial:sqlite-jdbc:3.30.1'
     }
 }
 apply plugin: 'net.minecraftforge.gradle'
 // Only edit below this line, the above code adds and enables the necessary things for Forge to be setup.
 apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
+apply plugin: 'com.github.johnrengelman.shadow'
 
 version = modMinecraftVersion + "-" + modVersion
 group = modGroup
@@ -86,6 +90,11 @@ minecraft {
 }
 
 dependencies {
+		// MySQL and SQLite
+		compile 'org.modelmapper:modelmapper:2.3.6'
+		compile 'mysql:mysql-connector-java:8.0.19'
+		compile 'org.xerial:sqlite-jdbc:3.30.1'
+
     // Specify the version of Minecraft to use, If this is any group other then 'net.minecraft' it is assumed
     // that the dep is a ForgeGradle 'patcher' dependency. And it's patches will be applied.
     // The userdev artifact is a special name and will get all sorts of transformations applied to it.
@@ -108,7 +117,12 @@ dependencies {
     // For more info...
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
+}
 
+if (JavaVersion.current().isJava8Compatible()) {
+	tasks.withType(Javadoc) {
+		options.addStringOption('Xdoclint:none', '-quiet')
+	}
 }
 
 // Example for how to get properties into the manifest for reading by the runtime..
@@ -127,52 +141,44 @@ jar {
     }
 }
 
-// Example configuration to allow publishing using the maven-publish task
-// we define a custom artifact that is sourced from the reobfJar output task
-// and then declare that to be published
-// Note you'll need to add a repository here
-def reobfFile = file("$buildDir/reobfJar/output.jar")
-def reobfArtifact = artifacts.add('default', reobfFile) {
-    type 'jar'
-    builtBy 'reobfJar'
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
 }
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            artifact reobfArtifact
-        }
-    }
-    repositories {
-        maven {
-            url "file:///${project.projectDir}/mcmodsrepo"
-        }
-    }
+build.dependsOn sourcesJar
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+	classifier = 'javadoc'
+	from javadoc.destinationDir
 }
 
-import net.minecraftforge.gradle.common.task.SignJar
-
-task signJar(type: SignJar, dependsOn: jar) {
-    onlyIf {
-        project.hasProperty('keyStore')
-    }
-
-    keyStore = project.findProperty('keyStore')
-    alias = project.findProperty('keyStoreAlias')
-    storePass = project.findProperty('keyStorePass')
-    keyPass = project.findProperty('keyStoreKeyPass')
-    inputFile = jar.archivePath
-    outputFile = jar.archivePath
+shadowJar {
+	dependencies {
+		include(dependency('org.modelmapper:modelmapper:.*'))
+	}
 }
 
-build.dependsOn signJar
+task deobfJar(type: Jar) {
+	from sourceSets.main.output
+	classifier = 'dev'
+}
+
+artifacts {
+	archives jar
+  archives sourcesJar
+  archives javadocJar
+  archives deobfJar
+}
+
 
 processResources {
     inputs.property 'version', project.version
+    inputs.property 'mcversion', modMinecraftVersion
 
     from (sourceSets.main.resources.srcDirs) {
         include 'META-INF/mods.toml'
 
-        expand 'version': project.version
+        expand 'version': project.version, 'mcversion': modMinecraftVersion
     }
 
     from (sourceSets.main.resources.srcDirs) {
@@ -180,12 +186,4 @@ processResources {
     }
 }
 
-task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-}
-build.dependsOn sourcesJar
-
-artifacts {
-    archives sourcesJar
-}
+build.dependsOn(shadowJar)
