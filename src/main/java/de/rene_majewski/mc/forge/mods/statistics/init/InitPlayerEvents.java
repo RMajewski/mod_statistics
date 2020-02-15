@@ -33,15 +33,15 @@ public class InitPlayerEvents {
 		}
 		login.setServerName(serverName);
 		
-		DbManager.getInstance().addLogin(login);
+		DbManager.getInstance().queries().addLogin(login);
 	}
 
 	@SubscribeEvent
 	public void logoutEvent(LoggedOutEvent event) {
-		TableLogin record = DbManager.getInstance().getLatestLogin();
+		TableLogin record = DbManager.getInstance().queries().getLatestLogin();
 		if (record != null) {
 			record.setLogoutDateTime(Timestamp.valueOf(UtilDate.now()));
-			DbManager.getInstance().updateLogin(record);
+			DbManager.getInstance().queries().updateLogin(record);
 		}
 	}
 }
