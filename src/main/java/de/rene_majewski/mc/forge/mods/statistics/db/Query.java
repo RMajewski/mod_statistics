@@ -2,6 +2,9 @@ package de.rene_majewski.mc.forge.mods.statistics.db;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.List;
+
+import javax.sound.sampled.LineListener;
 
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.dao.DaoManager;
@@ -228,7 +231,10 @@ public final class Query {
 	 */
 	public TableLogin getLatestLogin() {
 		try {
-			return daoLogin.queryBuilder().orderBy("id", false).limit(1L).query().get(0);
+			List<TableLogin> request = daoLogin.queryBuilder().orderBy("id", false).limit(1L).query();
+			if (request.size() > 0) {
+				return request.get(0);
+			}
 		} catch (SQLException e) {
 			DbManager.LOGGER.error("Error while determining the last login record.", e);
 		}

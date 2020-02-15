@@ -23,7 +23,7 @@ public class InitPlayerEvents {
 	 * Spieler loggt sich auf einen Server ein.
 	 */
 	@SubscribeEvent
-	public void loginEvent(LoggedInEvent event) {
+	public void onLogin(LoggedInEvent event) {
 		StatisticsMod.LOGGER.debug("Called LoggedInEvent");
 		TableLogin login = new TableLogin();
 		login.setLoginDateTime(Timestamp.valueOf(UtilDate.now()));
@@ -37,7 +37,7 @@ public class InitPlayerEvents {
 	}
 
 	@SubscribeEvent
-	public void logoutEvent(LoggedOutEvent event) {
+	public void onLogout(LoggedOutEvent event) {
 		TableLogin record = DbManager.getInstance().queries().getLatestLogin();
 		if (record != null) {
 			record.setLogoutDateTime(Timestamp.valueOf(UtilDate.now()));
