@@ -1,14 +1,22 @@
 package de.rene_majewski.mc.forge.mods.statistics.db;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
+import java.io.IOException;
 import java.sql.SQLException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.j256.ormlite.dao.Dao;
+import com.j256.ormlite.dao.DaoManager;
+import com.j256.ormlite.db.MysqlDatabaseType;
+import com.j256.ormlite.db.SqliteDatabaseType;
+import com.j256.ormlite.jdbc.JdbcConnectionSource;
+import com.j256.ormlite.table.TableUtils;
+
 import de.rene_majewski.mc.forge.mods.statistics.StatisticsMod;
 import de.rene_majewski.mc.forge.mods.statistics.config.Config;
+import de.rene_majewski.mc.forge.mods.statistics.db.dao.LoginDaoImpl;
+import de.rene_majewski.mc.forge.mods.statistics.db.tables.TableLogin;
 
 /**
  * Stellt die Verbindung zur Datenbank mit den entsprechenden Treiber her.
@@ -31,18 +39,25 @@ public class DbManager {
 	/**
 	 * Speichert die Verbindung zur Datenbank.
 	 */
-	private Connection connection;
+	private JdbcConnectionSource connection;
 	
 	/**
-	 * Speichert welche Datenbank genutzt wird.
+	 * Speichert ob die Datenbank initialisiert werden konnte.
 	 */
-	private DbType type;
+	private boolean isConnected;
+	
+	/**
+	 * Speichert das Dao-Objekt für die Login-Tabelle.
+	 */
+	private LoginDaoImpl daoLogin;
 
 	/**
 	 * Initialisieren der Verbindung zur Datenbank.
 	 */
 	private DbManager() {
 		connection = null;
+		isConnected = false;
+		daoLogin = null;
 	}
 	
 	/**
@@ -82,10 +97,8 @@ public class DbManager {
 	 */
 	private boolean conntectToMysql(String host, String database, String user, String passwd) {
 		try {
-			Class.forName("com.mysql.jdbc.Driver").newInstance();
-			
-			String connectionCommand = "jdbc:mysql://" + host + "/" + database + "?user=" + user + "&password=" + passwd;
-			connection = DriverManager.getConnection(connectionCommand);
+			String connectionCommand = "jdbc:mysql://" + host + "/" + database;
+			connection = new JdbcConnectionSource(connectionCommand, user, passwd, new MysqlDatabaseType());
 			
 			LOGGER.info("The connection to the MySQL database '" + database + "' has been established.");
 		} catch (Exception ex) {
@@ -107,17 +120,16 @@ public class DbManager {
 	 */
 	private boolean connectToSqlite(String fileName) {
 		try {
-			Class.forName("org.sqlite.JDBC").newInstance();
-			
+			Class.forName("org.sqlite.JDBC");
+
 			String connectionCommand = "jdbc:sqlite:" + fileName;			
-			connection = DriverManager.getConnection(connectionCommand);
+			connection = new JdbcConnectionSource(connectionCommand, new SqliteDatabaseType());
 			
 			LOGGER.info("Connected to SQLite file: " + fileName);
-		} catch (ClassNotFoundException e) {
-			LOGGER.error("Not found the JDBC driver for SQLite.", e);
-			return false;
+		} catch (ClassNotFoundException e) { 
+			LOGGER.error("Database driver not found.", e);
 		} catch (Exception ex) {
-			StatisticsMod.LOGGER.error("The SQLite file '" + fileName + "' could not be opened.", ex);
+			LOGGER.error("The SQLite file '" + fileName + "' could not be opened.", ex);
 			return false;
 		}
 		
@@ -129,7 +141,7 @@ public class DbManager {
 	 * 
 	 * @return Hergestellte Verbindung zur Datenbank.
 	 */
-	public Connection getConnection() {
+	public JdbcConnectionSource getConnection() {
 		return connection;
 	}
 
@@ -138,19 +150,20 @@ public class DbManager {
 	 * 
 	 * Besteht schon eine Verbindung zur Datenbank wird diese zu erst
 	 * geschlossen.
+	 * 
+	 * Wenn die Verbindung zur Datenbank hergestellt werden konnte, wird das
+	 * Datenbank-Schema geladen.
 	 */
 	public void initConnection() {
 		closeConnection();
 		
-		type = Config.databaseType;
-		
-		switch (type) {
+		switch (Config.databaseType) {
 			case SQLITE:
-				connectToSqlite(Config.databaseName);
+				isConnected = connectToSqlite(Config.databaseName);
 				break;
 				
 			case MYSQL:
-				conntectToMysql(
+				isConnected = conntectToMysql(
 						Config.databaseHost,
 						Config.databaseName,
 						Config.databaseUser,
@@ -158,17 +171,101 @@ public class DbManager {
 				);
 				break;
 		}
+		
+		if (isConnected && connection != null) {
+			initDbSchema();
+		}
 
 	}
 	
+	/**
+	 * Erzeugt die Dao-Objekte und erstellt die Datenbank-Tabellen, sofern diese
+	 * noch nicht angelegt wurden.
+	 */
+	private void initDbSchema() {
+		daoLogin = (LoginDaoImpl) initDao(TableLogin.class);
+	}
+	
+	private Dao<?, ?> initDao(Class<?> clazz) {
+		Dao<?, ?> dao;
+		try {
+			dao = DaoManager.createDao(connection, clazz);
+			
+			if (!dao.isTableExists()) {
+				TableUtils.createTableIfNotExists(connection, clazz);
+			}
+			
+			return dao;
+		} catch (SQLException e) {
+			LOGGER.error("Error while initializing the DAO object with name '" + clazz.getSimpleName() + "'");
+		}
+		
+		return null;
+	}
+
+	/**
+	 * Schließt die Verbindung zur Datenbank.
+	 * 
+	 * Wenn eine Verbindung zur Datenbank hergestellt wurde, wird diese
+	 * geschlossen.
+	 */
 	public void closeConnection() {
-		if (connection != null) {
+		if (isConnected && connection != null) {
 			try {
 				connection.close();
 				LOGGER.debug("Close connection to database.");
-			} catch (SQLException e) {
+			} catch (IOException e) {
 				LOGGER.error("Error when closing the database connection", e);
 			}
+
+			isConnected = false;
 		}
+	}
+	
+	/**
+	 * Fügt den übergebenen Datensatz in die Login-Tabelle ein.
+	 * 
+	 * @param login Datensatz, der in der Login-Tabelle erstellt werden soll. 
+	 */
+	public void addLogin(TableLogin login) {
+		try {
+			daoLogin.create(login);
+			LOGGER.debug("Create login record");
+		} catch (SQLException e) {
+			LOGGER.error("An error occurred while creating a record in '" + login.getClass().getSimpleName() + "'.");
+		}
+	}
+	
+	/**
+	 * Updatet den angegeben Datensatz in der Datenbank.
+	 * 
+	 * @param login Datensatz der in der Datenbank aktualisiert werden soll.
+	 */
+	public void updateLogin(TableLogin login) {
+		try {
+			if (daoLogin.update(login) > 0) {
+				LOGGER.debug("Login record was successfully updated.");
+			} else {
+				LOGGER.debug("The login record could not be updated.");				
+			}
+		} catch (SQLException e) {
+			LOGGER.error("Error while updating a login record.", e);
+		}
+	}
+	
+	/**
+	 * Ermittelt den letzten Datensatz der Login-Tabelle.
+	 * 
+	 * @return Der letzte Datensatz der Login-Tabelle. Bei einem Fehler wird
+	 * <b>null</b> zurückgegeben.
+	 */
+	public TableLogin getLatestLogin() {
+		try {
+			return daoLogin.queryBuilder().orderBy("id", false).limit(1L).query().get(0);
+		} catch (SQLException e) {
+			LOGGER.error("Error while determining the last login record.", e);
+		}
+		
+		return null;
 	}
 }

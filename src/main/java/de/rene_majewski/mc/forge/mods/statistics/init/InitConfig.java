@@ -18,7 +18,7 @@ import net.minecraftforge.fml.config.ModConfig.ModConfigEvent;
  */
 @EventBusSubscriber(modid = StatisticsMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public final class InitConfig {
-	private static final Logger LOGGER = LogManager.getLogger(StatisticsMod.MOD_ID + " od Event Subscriber");
+	private static final Logger LOGGER = LogManager.getLogger(StatisticsMod.MOD_ID + " Mod Event Subscriber");
 	
 	@SubscribeEvent
 	public static void onModConfigEvent(final ModConfigEvent event) {

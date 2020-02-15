@@ -64,7 +64,7 @@ final class ClientConfig {
 		client.comment("Configuration for database uses");
 		
 		databaseType = client
-				.comment("Which database should be used? Possible values are mysql or sqlite.")
+				.comment("Which database should be used?")
 				.translation(StatisticsMod.MOD_ID + ".config.database.type")
 				.defineEnum("database.type", DbType.SQLITE);
 		

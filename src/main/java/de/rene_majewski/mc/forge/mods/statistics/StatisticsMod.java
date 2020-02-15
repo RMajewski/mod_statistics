@@ -29,8 +29,11 @@ public class StatisticsMod {
 	 * Initialisiert die Hauptklasse dieser Mod.
 	 */
 	public StatisticsMod() {
+		// Konfiguration registrieren
 		ModLoadingContext.get().registerConfig(
 				ModConfig.Type.CLIENT,
 				de.rene_majewski.mc.forge.mods.statistics.config.ModConfig.CLIENT_SPEC);
+		
+		
 	}
 }
