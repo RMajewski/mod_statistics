@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 
-import javax.sound.sampled.LineListener;
-
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.dao.DaoManager;
 import com.j256.ormlite.db.MysqlDatabaseType;
@@ -13,7 +11,9 @@ import com.j256.ormlite.db.SqliteDatabaseType;
 import com.j256.ormlite.jdbc.JdbcConnectionSource;
 import com.j256.ormlite.table.TableUtils;
 
+import de.rene_majewski.mc.forge.mods.statistics.db.dao.ChatDaoImpl;
 import de.rene_majewski.mc.forge.mods.statistics.db.dao.LoginDaoImpl;
+import de.rene_majewski.mc.forge.mods.statistics.db.tables.TableChat;
 import de.rene_majewski.mc.forge.mods.statistics.db.tables.TableLogin;
 
 /**
@@ -37,6 +37,11 @@ public final class Query {
 	 * Speichert das Dao-Objekt für die Login-Tabelle.
 	 */
 	private LoginDaoImpl daoLogin;
+	
+	/**
+	 * Speichert das Dao-Objekt für die Chat-Tabelle.
+	 */
+	private ChatDaoImpl daoChat;
 
 	/**
 	 * Initialisiert die Attribute dieser Klasse.
@@ -44,6 +49,8 @@ public final class Query {
 	public Query() {
 		connection = null;
 		isConnected = false;
+		
+		daoChat = null;
 		daoLogin = null;
 	}
 
@@ -164,6 +171,7 @@ public final class Query {
 	 * noch nicht angelegt wurden.
 	 */
 	private void initDbSchema() {
+		daoChat = (ChatDaoImpl) initDao(TableChat.class);
 		daoLogin = (LoginDaoImpl) initDao(TableLogin.class);
 	}
 	
@@ -240,5 +248,20 @@ public final class Query {
 		}
 		
 		return null;
+	}
+
+	/**
+	 * Schreibt die angegebene Chat-Nachricht in die Datenbank.
+	 * 
+	 * @param data Chat-Nachricht, die in die Datenbank gespeichert werden
+	 * soll.
+	 */
+	public void addChatMessage(TableChat data) {
+		try {
+			daoChat.create(data);
+			DbManager.LOGGER.debug("Create chat record");
+		} catch (SQLException e) {
+			DbManager.LOGGER.error("An error occurred while creating a record in '" + data.getClass().getSimpleName() + "'.");
+		}
 	}
 }

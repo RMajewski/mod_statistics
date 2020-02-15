@@ -1,16 +1,12 @@
 package de.rene_majewski.mc.forge.mods.statistics.init;
 
-import org.apache.commons.logging.impl.Log4JLogger;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.rene_majewski.mc.forge.mods.statistics.StatisticsMod;
-import net.minecraft.client.gui.NewChatGui;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.MinecraftForgeClient;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
@@ -31,6 +27,7 @@ public final class ClientModEventSubscriber {
 	@SubscribeEvent
 	public static void onFMLClientSetupEvent(final FMLClientSetupEvent event) {
 		LOGGER.debug("Setup client events");
+		MinecraftForge.EVENT_BUS.register(new InitChatEvents());
 		MinecraftForge.EVENT_BUS.register(new InitPlayerEvents());
 	}
 }
